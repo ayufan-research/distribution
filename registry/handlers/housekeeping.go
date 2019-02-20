@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
+	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
+	"github.com/docker/distribution/registry/storage"
 	"github.com/gorilla/handlers"
 	"github.com/opencontainers/go-digest"
 )
@@ -30,28 +33,131 @@ type housekeepingHandler struct {
 	Digest digest.Digest
 }
 
+type ManifestDel struct {
+	Name   string
+	Digest digest.Digest
+	Tags   []string
+}
+
+func emit(format string, a ...interface{}) {
+	fmt.Printf(format+"\n", a...)
+}
+
+func (bh *housekeepingHandler) markAllManifests(service distribution.ManifestService, manifestArr *[]ManifestDel, markSet map[digest.Digest]struct{}) error {
+	manifestEnumerator, ok := service.(distribution.ManifestEnumerator)
+	if !ok {
+		return fmt.Errorf("unable to convert ManifestService into ManifestEnumerator")
+	}
+
+	removeUntagged := true
+
+	err := manifestEnumerator.Enumerate(bh.Context, func(dgst digest.Digest) error {
+		if removeUntagged {
+			// fetch all tags where this manifest is the latest one
+			tags, err := bh.Repository.Tags(bh.Context).Lookup(bh.Context, distribution.Descriptor{Digest: dgst})
+			if err != nil {
+				return fmt.Errorf("failed to retrieve tags for digest %v: %v", dgst, err)
+			}
+
+			if len(tags) == 0 {
+				emit("manifest eligible for deletion: %s", dgst)
+				// fetch all tags from repository
+				// all of these tags could contain manifest in history
+				// which means that we need check (and delete) those references when deleting manifest
+				allTags, err := bh.Repository.Tags(bh.Context).All(bh.Context)
+				if err != nil {
+					return fmt.Errorf("failed to retrieve tags %v", err)
+				}
+
+				*manifestArr = append(*manifestArr, ManifestDel{Name: bh.Repository.Named().Name(), Digest: dgst, Tags: allTags})
+				return nil
+			}
+		}
+
+		// Mark the manifest's blob
+		emit("%s: marking manifest %s ", bh.Repository.Named().Name(), dgst)
+		markSet[dgst] = struct{}{}
+
+		manifest, err := service.Get(bh.Context, dgst)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve manifest for digest %v: %v", dgst, err)
+		}
+
+		descriptors := manifest.References()
+		for _, descriptor := range descriptors {
+			markSet[descriptor.Digest] = struct{}{}
+			emit("%s: marking blob %s", bh.Repository.Named().Name(), descriptor.Digest)
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+func (bh *housekeepingHandler) runGCCycle() error {
+	manifestService, err := bh.Repository.Manifests(bh.Context)
+	if err != nil {
+		return fmt.Errorf("failed to construct manifest service: %v", err)
+	}
+
+	blobsService := bh.Repository.Blobs(bh.Context)
+	if err != nil {
+		return fmt.Errorf("failed to construct blobs service: %v", err)
+	}
+
+	markSet := make(map[digest.Digest]struct{})
+	manifestArr := make([]ManifestDel, 0)
+	err = bh.markAllManifests(manifestService, &manifestArr, markSet)
+	if err != nil {
+		return fmt.Errorf("failed to mark all manifests: %v", err)
+	}
+
+	vacuum := storage.NewVacuum(bh.Context, bh.driver)
+
+	for _, obj := range manifestArr {
+		err = vacuum.RemoveManifest(obj.Name, obj.Digest, obj.Tags)
+		if err != nil {
+			return fmt.Errorf("failed to delete manifest %s: %v", obj.Digest, err)
+		}
+	}
+
+	blobsEnumerator, ok := blobsService.(distribution.BlobEnumerator)
+	if !ok {
+		return fmt.Errorf("unable to convert ManifestService into ManifestEnumerator")
+	}
+
+	// remove blobs only from our repository
+	if blobsEnumerator.IsScopped() {
+		err = blobsEnumerator.Enumerate(bh.Context, func(dgst digest.Digest) error {
+			// check if digest is in markSet. If not, delete it!
+			if _, ok := markSet[dgst]; !ok {
+				vacuum.RemoveRepositoryBlob(bh.Repository.Named().Name(), dgst)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to delete blobs %v", err)
+		}
+	}
+
+	return nil
+}
+
 // GetBlob fetches the binary data from backend storage returns it in the
 // response.
-func (bh *blobHandler) Recycle(w http.ResponseWriter, r *http.Request) {
+func (bh *housekeepingHandler) Recycle(w http.ResponseWriter, r *http.Request) {
 	context.GetLogger(bh).Debug("Recycle")
 
-	// blobs := bh.Repository.Blobs(bh)
-	// desc, err := blobs.Stat(bh, bh.Digest)
-	// if err != nil {
-	// 	if err == distribution.ErrBlobUnknown {
-	// 		bh.Errors = append(bh.Errors, v2.ErrorCodeBlobUnknown.WithDetail(bh.Digest))
-	// 	} else {
-	// 		bh.Errors = append(bh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
-	// 	}
-	// 	return
-	// }
+	err := bh.runGCCycle()
 
-	// if err := blobs.ServeBlob(bh, w, r, desc.Digest); err != nil {
-	// 	context.GetLogger(bh).Debugf("unexpected error getting blob HTTP handler: %v", err)
-	// 	bh.Errors = append(bh.Errors, errcode.ErrorCodeUnknown.WithDetail(err))
-	// 	return
-	// }
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
 
 	w.Header().Set("Content-Length", "0")
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(http.StatusOK)
 }
