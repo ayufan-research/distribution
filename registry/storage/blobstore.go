@@ -237,7 +237,7 @@ func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distributi
 		}
 
 		descriptor, err := bs.stat(ctx, dgst, path)
-		if err == distribution.ErrBlobUnknown {
+		if err == nil {
 			return descriptor, err
 		}
 	}
@@ -253,11 +253,9 @@ func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distributi
 		}
 
 		descriptor, err := bs.stat(ctx, dgst, path)
-		if err == distribution.ErrBlobUnknown {
+		if err == nil {
 			return descriptor, err
 		}
-
-		return bs.stat(ctx, dgst, path)
 	}
 
 	return distribution.Descriptor{}, distribution.ErrBlobUnknown
