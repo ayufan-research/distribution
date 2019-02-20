@@ -24,6 +24,7 @@ type blobStore struct {
 }
 
 var _ distribution.BlobProvider = &blobStore{}
+var _ distribution.BlobEnumerator = &blobStore{}
 
 // Get implements the BlobReadService.Get call.
 func (bs *blobStore) Get(ctx context.Context, dgst digest.Digest) ([]byte, error) {

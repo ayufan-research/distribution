@@ -25,6 +25,10 @@ type proxyManifestStore struct {
 
 var _ distribution.ManifestService = &proxyManifestStore{}
 
+func (pms proxyManifestStore) Enumerate(ctx context.Context, ingester func(digest.Digest) error) error {
+	return nil
+}
+
 func (pms proxyManifestStore) Exists(ctx context.Context, dgst digest.Digest) (bool, error) {
 	exists, err := pms.localManifests.Exists(ctx, dgst)
 	if err != nil {

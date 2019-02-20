@@ -246,6 +246,10 @@ type proxiedRepository struct {
 	tags      distribution.TagService
 }
 
+func (pr *proxiedRepository) RepositoryBlobsEnumerator(ctx context.Context) distribution.BlobEnumerator {
+	return nil
+}
+
 func (pr *proxiedRepository) Manifests(ctx context.Context, options ...distribution.ManifestServiceOption) (distribution.ManifestService, error) {
 	return pr.manifests, nil
 }

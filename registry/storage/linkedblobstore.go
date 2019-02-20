@@ -45,6 +45,7 @@ type linkedBlobStore struct {
 }
 
 var _ distribution.BlobStore = &linkedBlobStore{}
+var _ distribution.BlobEnumerator = &linkedBlobStore{}
 
 func (lbs *linkedBlobStore) Stat(ctx context.Context, dgst digest.Digest) (distribution.Descriptor, error) {
 	return lbs.blobAccessController.Stat(ctx, dgst)

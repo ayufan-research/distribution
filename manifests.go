@@ -61,6 +61,8 @@ type ManifestService interface {
 	// Delete removes the manifest specified by the given digest. Deleting
 	// a manifest that doesn't exist will return ErrManifestNotFound
 	Delete(ctx context.Context, dgst digest.Digest) error
+
+	Enumerate(ctx context.Context, ingester func(digest.Digest) error) error
 }
 
 // ManifestEnumerator enables iterating over manifests

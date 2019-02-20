@@ -101,10 +101,7 @@ func (bh *housekeepingHandler) runGCCycle() error {
 		return fmt.Errorf("failed to construct manifest service: %v", err)
 	}
 
-	blobsService := bh.Repository.Blobs(bh.Context)
-	if err != nil {
-		return fmt.Errorf("failed to construct blobs service: %v", err)
-	}
+	blobsService := bh.Repository.RepositoryBlobsEnumerator(bh.Context)
 
 	markSet := make(map[digest.Digest]struct{})
 	manifestArr := make([]ManifestDel, 0)
@@ -122,14 +119,9 @@ func (bh *housekeepingHandler) runGCCycle() error {
 		}
 	}
 
-	blobsEnumerator, ok := blobsService.(distribution.BlobEnumerator)
-	if !ok {
-		return fmt.Errorf("unable to convert ManifestService into ManifestEnumerator")
-	}
-
 	// remove blobs only from our repository
-	if blobsEnumerator.IsScopped() {
-		err = blobsEnumerator.Enumerate(bh.Context, func(dgst digest.Digest) error {
+	if blobsService != nil && blobsService.IsScopped() {
+		err = blobsService.Enumerate(bh.Context, func(dgst digest.Digest) error {
 			// check if digest is in markSet. If not, delete it!
 			if _, ok := markSet[dgst]; !ok {
 				vacuum.RemoveRepositoryBlob(bh.Repository.Named().Name(), dgst)
