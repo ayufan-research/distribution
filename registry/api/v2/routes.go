@@ -11,6 +11,7 @@ const (
 	RouteNameBlob            = "blob"
 	RouteNameBlobUpload      = "blob-upload"
 	RouteNameBlobUploadChunk = "blob-upload-chunk"
+	RouteNameRecycle         = "recycle"
 	RouteNameCatalog         = "catalog"
 )
 
