@@ -28,14 +28,14 @@ type Vacuum struct {
 	ctx    context.Context
 }
 
-// RemoveLocalBlob removes a blob from the filesystem
-func (v Vacuum) RemoveLocalBlob(name string, dgst string) error {
+// RemoveRepositoryBlob removes a blob from the filesystem
+func (v Vacuum) RemoveRepositoryBlob(repositoryScope string, dgst string) error {
 	d, err := digest.Parse(dgst)
 	if err != nil {
 		return err
 	}
 
-	blobPath, err := pathFor(repositoryBlobPathSpec{name: name, digest: d})
+	blobPath, err := pathFor(repositoryBlobPathSpec{name: repositoryScope, digest: d})
 	if err != nil {
 		return err
 	}
