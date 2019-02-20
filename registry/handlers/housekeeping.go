@@ -9,22 +9,22 @@ import (
 )
 
 // blobDispatcher uses the request context to build a blobHandler.
-func recycleDispatcher(ctx *Context, r *http.Request) http.Handler {
-	recycleHandler := &recycleHandler{
+func housekeepingDispatcher(ctx *Context, r *http.Request) http.Handler {
+	housekeepingHandler := &housekeepingHandler{
 		Context: ctx,
 	}
 
 	mhandler := handlers.MethodHandler{}
 
 	if !ctx.readOnly {
-		mhandler["DELETE"] = http.HandlerFunc(recycleHandler.Recycle)
+		mhandler["DELETE"] = http.HandlerFunc(housekeepingHandler.Recycle)
 	}
 
 	return mhandler
 }
 
 // blobHandler serves http blob requests.
-type recycleHandler struct {
+type housekeepingHandler struct {
 	*Context
 
 	Digest digest.Digest

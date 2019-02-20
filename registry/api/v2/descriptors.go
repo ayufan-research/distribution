@@ -502,10 +502,10 @@ var routeDescriptors = []RouteDescriptor{
 	},
 
 	{
-		Name:        RouteNameRecycle,
-		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/recycle",
-		Entity:      "Recycle",
-		Description: "Recycle the repository.",
+		Name:        RouteNameHousekeeping,
+		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/housekeeping",
+		Entity:      "Housekeeping",
+		Description: "Perform housekeeping operations.",
 		Methods: []MethodDescriptor{
 			{
 				Method:      "DELETE",
