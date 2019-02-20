@@ -87,6 +87,14 @@ func (bs *blobStore) Put(ctx context.Context, mediaType string, p []byte) (distr
 	}, bs.driver.PutContent(ctx, bp, p)
 }
 
+func (bs *blobStore) IsScopped() bool {
+	if bs.options.repositoryBlobStoreEnabled && bs.repositoryScope != "" {
+		return true
+	}
+
+	return false
+}
+
 func (bs *blobStore) Enumerate(ctx context.Context, ingester func(dgst digest.Digest) error) error {
 	specPath, err := bs.rootPath()
 	if err != nil {
