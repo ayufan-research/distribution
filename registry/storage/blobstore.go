@@ -24,6 +24,7 @@ type blobStore struct {
 }
 
 var _ distribution.BlobProvider = &blobStore{}
+var _ distribution.BlobEnumerator = &blobStore{}
 
 // Get implements the BlobReadService.Get call.
 func (bs *blobStore) Get(ctx context.Context, dgst digest.Digest) ([]byte, error) {
@@ -85,6 +86,14 @@ func (bs *blobStore) Put(ctx context.Context, mediaType string, p []byte) (distr
 		Digest:    dgst,
 		Location:  bp,
 	}, bs.driver.PutContent(ctx, bp, p)
+}
+
+func (bs *blobStore) IsScopped() bool {
+	if bs.options.repositoryBlobStoreEnabled && bs.repositoryScope != "" {
+		return true
+	}
+
+	return false
 }
 
 func (bs *blobStore) Enumerate(ctx context.Context, ingester func(dgst digest.Digest) error) error {
@@ -237,7 +246,7 @@ func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distributi
 		}
 
 		descriptor, err := bs.stat(ctx, dgst, path)
-		if err == distribution.ErrBlobUnknown {
+		if err == nil {
 			return descriptor, err
 		}
 	}
@@ -253,11 +262,9 @@ func (bs *blobStatter) Stat(ctx context.Context, dgst digest.Digest) (distributi
 		}
 
 		descriptor, err := bs.stat(ctx, dgst, path)
-		if err == distribution.ErrBlobUnknown {
+		if err == nil {
 			return descriptor, err
 		}
-
-		return bs.stat(ctx, dgst, path)
 	}
 
 	return distribution.Descriptor{}, distribution.ErrBlobUnknown

@@ -409,3 +409,11 @@ func (repo *repository) Blobs(ctx context.Context) distribution.BlobStore {
 		resumableDigestEnabled: repo.resumableDigestEnabled,
 	}
 }
+
+func (repo *repository) RepositoryBlobsEnumerator(ctx context.Context) distribution.BlobEnumerator {
+	if repo.options.repositoryBlobStoreEnabled {
+		return repo.scopedBlobStore()
+	}
+
+	return nil
+}

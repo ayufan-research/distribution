@@ -57,7 +57,7 @@ func NewRegistryPullThroughCache(ctx context.Context, registry distribution.Name
 			return err
 		}
 
-		err = v.RemoveBlob(r.Digest().String())
+		err = v.RemoveBlob(r.Digest())
 		if err != nil {
 			return err
 		}
@@ -244,6 +244,10 @@ type proxiedRepository struct {
 	manifests distribution.ManifestService
 	name      reference.Named
 	tags      distribution.TagService
+}
+
+func (pr *proxiedRepository) RepositoryBlobsEnumerator(ctx context.Context) distribution.BlobEnumerator {
+	return nil
 }
 
 func (pr *proxiedRepository) Manifests(ctx context.Context, options ...distribution.ManifestServiceOption) (distribution.ManifestService, error) {

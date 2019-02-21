@@ -73,6 +73,12 @@ func (bw *blobWriter) Commit(ctx context.Context, desc distribution.Descriptor) 
 		return distribution.Descriptor{}, err
 	}
 
+	// set store path
+	canonical.Location, err = bw.storePath(desc.Digest)
+	if err != nil {
+		return distribution.Descriptor{}, err
+	}
+
 	if err := bw.moveBlob(ctx, canonical); err != nil {
 		return distribution.Descriptor{}, err
 	}

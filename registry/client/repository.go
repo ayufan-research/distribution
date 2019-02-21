@@ -174,6 +174,10 @@ func (r *repository) Blobs(ctx context.Context) distribution.BlobStore {
 	}
 }
 
+func (r *repository) RepositoryBlobsEnumerator(ctx context.Context) distribution.BlobEnumerator {
+	return nil
+}
+
 func (r *repository) Manifests(ctx context.Context, options ...distribution.ManifestServiceOption) (distribution.ManifestService, error) {
 	// todo(richardscothern): options should be sent over the wire
 	return &manifests{
@@ -364,6 +368,10 @@ type manifests struct {
 	ub     *v2.URLBuilder
 	client *http.Client
 	etags  map[string]string
+}
+
+func (ms *manifests) Enumerate(ctx context.Context, ingester func(digest.Digest) error) error {
+	return nil
 }
 
 func (ms *manifests) Exists(ctx context.Context, dgst digest.Digest) (bool, error) {

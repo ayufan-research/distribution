@@ -500,6 +500,77 @@ var routeDescriptors = []RouteDescriptor{
 			},
 		},
 	},
+
+	{
+		Name:        RouteNameHousekeeping,
+		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/housekeeping",
+		Entity:      "Housekeeping",
+		Description: "Perform housekeeping operations.",
+		Methods: []MethodDescriptor{
+			{
+				Method:      "DELETE",
+				Description: "Remove all unreferenced manifests and tags.",
+				Requests: []RequestDescriptor{
+					{
+						Headers: []ParameterDescriptor{
+							hostHeader,
+							authHeader,
+						},
+						PathParameters: []ParameterDescriptor{
+							nameParameterDescriptor,
+							referenceParameterDescriptor,
+						},
+						Successes: []ResponseDescriptor{
+							{
+								StatusCode: http.StatusAccepted,
+							},
+						},
+						Failures: []ResponseDescriptor{
+							{
+								Name:        "Invalid Name or Reference",
+								Description: "The specified `name` or `reference` were invalid and the delete was unable to proceed.",
+								StatusCode:  http.StatusBadRequest,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameInvalid,
+									ErrorCodeTagInvalid,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							unauthorizedResponseDescriptor,
+							repositoryNotFoundResponseDescriptor,
+							deniedResponseDescriptor,
+							tooManyRequestsDescriptor,
+							{
+								Name:        "Unknown Manifest",
+								Description: "The specified `name` or `reference` are unknown to the registry and the delete was unable to proceed. Clients can assume the manifest was already deleted if this response is returned.",
+								StatusCode:  http.StatusNotFound,
+								ErrorCodes: []errcode.ErrorCode{
+									ErrorCodeNameUnknown,
+									ErrorCodeManifestUnknown,
+								},
+								Body: BodyDescriptor{
+									ContentType: "application/json; charset=utf-8",
+									Format:      errorsBody,
+								},
+							},
+							{
+								Name:        "Not allowed",
+								Description: "Manifest delete is not allowed because the registry is configured as a pull-through cache or `delete` has been disabled.",
+								StatusCode:  http.StatusMethodNotAllowed,
+								ErrorCodes: []errcode.ErrorCode{
+									errcode.ErrorCodeUnsupported,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+
 	{
 		Name:        RouteNameManifest,
 		Path:        "/v2/{name:" + reference.NameRegexp.String() + "}/manifests/{reference:" + reference.TagRegexp.String() + "|" + digest.DigestRegexp.String() + "}",

@@ -105,6 +105,8 @@ type Repository interface {
 	// Blobs returns a reference to this repository's blob service.
 	Blobs(ctx context.Context) BlobStore
 
+	RepositoryBlobsEnumerator(ctx context.Context) BlobEnumerator
+
 	// TODO(stevvooe): The above BlobStore return can probably be relaxed to
 	// be a BlobService for use with clients. This will allow such
 	// implementations to avoid implementing ServeBlob.
